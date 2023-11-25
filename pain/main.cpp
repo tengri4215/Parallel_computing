@@ -4,6 +4,8 @@
 #include <math.h>
 #include <utility>
 #include <iostream>
+#include <fstream>
+#include <string>
 
 using namespace std;
 
@@ -18,6 +20,8 @@ int tilesForProcess = 0;
 void Tile(int igl, int jgl) {
 	for (int i = igl * r1; i < std::min((igl + 1) * r1, n); ++i) {
 		for (int j = jgl * r2; j < std::min((jgl + 1) * r2, n); ++j) {
+			
+			C[i][j] = 0;
 			for (int k = 0; k < n; ++k) {
 				C[i][j] += A[i][k] * B[k][j];
 			}
@@ -31,8 +35,11 @@ void designate() {
 	for (int i = 1; i < numprocs; ++i) {
 		int t = base;
 		if (rem > 0) { ++t; --rem; }
-		//std::cerr << i << ' ' << t << '\n';
 		MPI_Send(&t, 1, MPI_INT, i, 1, MPI_COMM_WORLD);
+		for (int j = 0; j < n; j++) {
+			MPI_Send(&(A[j][0]), n, MPI_FLOAT, i, 1, MPI_COMM_WORLD);
+			MPI_Send(&(B[j][0]), n, MPI_FLOAT, i, 1, MPI_COMM_WORLD);
+		}
 	}
 	
 }
@@ -49,9 +56,9 @@ int main(int argc, char* argv[])
 	
 
 	MPI_Barrier(MPI_COMM_WORLD);
-	r1 = *argv[0];
-	Q2 = *argv[1];
-	n = *argv[2];
+	r1 = *argv[1] - '0';
+	Q2 = *argv[2] - '0';
+	n = *argv[3] - '0';
 	A = new float* [n];
 	B = new float* [n];
 	C = new float* [n];
@@ -61,7 +68,6 @@ int main(int argc, char* argv[])
 		C[i] = new float[n];
 	}
 	if (myid == 0) {
-		//std::cerr << numprocs << '\n';
 		for (int i = 0; i < n; i++) {
 			for (int j = 0; j < n; j++) {
 				A[i][j] = 200 * ((float)rand() / RAND_MAX) - 100;
@@ -71,25 +77,14 @@ int main(int argc, char* argv[])
 		Q1 = ceil(float(n) / r1);
 		r2 = ceil(float(n) / Q2);
 		designate();
-		//std::cerr << Q1 << ' ' << r2 << '\n';
-		//for (int i = 0; i < n; i++) {
-		//	for (int j = 0; j < n; j++) {
-		//		std::cerr << A[i][j] << ' ';
-		//	}
-		//	std::cerr << '\n';
-		//}
+		
 		int target_process = 0;
 		for (int igl = 0; igl < Q1; ++igl) {
 			for (int jgl = 0; jgl < Q2; ++jgl) {
 				target_process++;
 				if (target_process >= numprocs) target_process = 1;
-				//std::cerr << target_process << ' ';
 				MPI_Send(&igl, 1, MPI_INT, target_process, 1, MPI_COMM_WORLD);
 				MPI_Send(&jgl, 1, MPI_INT, target_process, 1, MPI_COMM_WORLD);
-				for (int i = igl * r1; i < min((igl + 1) * r1, n); ++i) {
-					MPI_Send(A[i] + jgl * r2, min(r2, n - jgl * r2), MPI_FLOAT, target_process, 1, MPI_COMM_WORLD);
-					MPI_Send(B[i] + jgl * r2, min(r2, n - jgl * r2), MPI_FLOAT, target_process, 1, MPI_COMM_WORLD);
-				}
 
 			}
 		}
@@ -103,44 +98,40 @@ int main(int argc, char* argv[])
 				}
 			}
 		}
+		ofstream fout("output.txt");
 		for (int i = 0; i < n; i++) {
 			for (int j = 0; j < n; j++) {
-				std::cerr << A[i][j] << ' ';
+				fout << A[i][j] << ' ';
 			}
-			std::cerr << '\n';
+			fout << '\n';
 		}
 		for (int i = 0; i < n; i++) {
 			for (int j = 0; j < n; j++) {
-				std::cerr << B[i][j] << ' ';
+				fout << B[i][j] << ' ';
 			}
-			std::cerr << '\n';
+			fout << '\n';
 		}
 		for (int i = 0; i < n; i++) {
 			for (int j = 0; j < n; j++) {
-				std::cerr << C[i][j] << ' ';
+				fout << C[i][j] << ' ';
 			}
-			std::cerr << '\n';
+			fout << '\n';
 		}
 	}
 	else {
 		int tilenumber;
 		MPI_Recv(&tilenumber, 1, MPI_INT, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-		//if (myid == 4) std::cerr << myid << ' ' << tilenumber << '\n';
+
+		for (int j = 0; j < n; j++) {
+			MPI_Recv(&(A[j][0]), n, MPI_FLOAT, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+			MPI_Recv(&(B[j][0]), n, MPI_FLOAT, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+		}
 		for (int t = 0; t < tilenumber; t++) {
-			//if (myid == 4) std::cerr << t << '\n';
 			int igl, jgl;
 			MPI_Recv(&igl, 1, MPI_INT, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 			MPI_Recv(&jgl, 1, MPI_INT, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-			//if (myid == 4) std::cerr << igl << ' ' << jgl << '\n';
 			Q1 = ceil(float(n) / r1);
 			r2 = ceil(float(n) / Q2);
-			for (int i = igl * r1; i < min((igl + 1) * r1, n); ++i) {
-				//if (myid == 4) std::cerr << i << ' ' << jgl * r2 << ' ' << min(r2, n - jgl * r2) << '\n';
-				MPI_Recv(A[i] + jgl * r2, min(r2, n - jgl * r2), MPI_FLOAT, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-				
-				MPI_Recv(B[i] + jgl * r2, min(r2, n - jgl * r2), MPI_FLOAT, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-			}
-			//if (myid == 4) std::cerr << igl << ' ' << jgl << '\n';
 			Tile(igl, jgl);
 			for (int i = igl * r1; i < min((igl + 1) * r1, n); ++i) {
 				MPI_Send(C[i] + jgl * r2, min(r2, n - jgl * r2), MPI_FLOAT, 0, 1, MPI_COMM_WORLD);
