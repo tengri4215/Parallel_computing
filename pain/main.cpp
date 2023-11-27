@@ -6,6 +6,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <chrono>
 
 using namespace std;
 
@@ -56,9 +57,9 @@ int main(int argc, char* argv[])
 	
 
 	MPI_Barrier(MPI_COMM_WORLD);
-	r1 = *argv[1] - '0';
-	Q2 = *argv[2] - '0';
-	n = *argv[3] - '0';
+	r1 = stoi((string)argv[1]);
+	Q2 = stoi((string)argv[2]);
+	n = stoi((string)argv[3]);
 	A = new float* [n];
 	B = new float* [n];
 	C = new float* [n];
@@ -76,6 +77,8 @@ int main(int argc, char* argv[])
 		}
 		Q1 = ceil(float(n) / r1);
 		r2 = ceil(float(n) / Q2);
+
+		auto start = std::chrono::steady_clock::now();
 		designate();
 		
 		int target_process = 0;
@@ -98,19 +101,11 @@ int main(int argc, char* argv[])
 				}
 			}
 		}
+		auto end = std::chrono::steady_clock::now();
+		auto time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+		ofstream tout("logs.txt", ios_base::app);
+		tout << numprocs - 1 << ' ' << r1 << ' ' << Q2 << ' ' << n << ' ' << time << '\n';
 		ofstream fout("output.txt");
-		for (int i = 0; i < n; i++) {
-			for (int j = 0; j < n; j++) {
-				fout << A[i][j] << ' ';
-			}
-			fout << '\n';
-		}
-		for (int i = 0; i < n; i++) {
-			for (int j = 0; j < n; j++) {
-				fout << B[i][j] << ' ';
-			}
-			fout << '\n';
-		}
 		for (int i = 0; i < n; i++) {
 			for (int j = 0; j < n; j++) {
 				fout << C[i][j] << ' ';
