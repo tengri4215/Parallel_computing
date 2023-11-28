@@ -38,7 +38,7 @@ void designate() {
 		if (rem > 0) { ++t; --rem; }
 		MPI_Send(&t, 1, MPI_INT, i, 1, MPI_COMM_WORLD);
 		for (int j = 0; j < n; j++) {
-			MPI_Send(&(A[j][0]), n, MPI_FLOAT, i, 1, MPI_COMM_WORLD);
+			//MPI_Send(&(A[j][0]), n, MPI_FLOAT, i, 1, MPI_COMM_WORLD);
 			MPI_Send(&(B[j][0]), n, MPI_FLOAT, i, 1, MPI_COMM_WORLD);
 		}
 	}
@@ -88,7 +88,9 @@ int main(int argc, char* argv[])
 				if (target_process >= numprocs) target_process = 1;
 				MPI_Send(&igl, 1, MPI_INT, target_process, 1, MPI_COMM_WORLD);
 				MPI_Send(&jgl, 1, MPI_INT, target_process, 1, MPI_COMM_WORLD);
-
+				for (int i = igl * r1; i < min((igl + 1) * r1, n); ++i) {
+					MPI_Send(A[i], n, MPI_FLOAT, target_process, 1, MPI_COMM_WORLD);
+				}
 			}
 		}
 		target_process = 0;
@@ -118,13 +120,16 @@ int main(int argc, char* argv[])
 		MPI_Recv(&tilenumber, 1, MPI_INT, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
 		for (int j = 0; j < n; j++) {
-			MPI_Recv(&(A[j][0]), n, MPI_FLOAT, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+			//MPI_Recv(&(A[j][0]), n, MPI_FLOAT, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 			MPI_Recv(&(B[j][0]), n, MPI_FLOAT, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 		}
 		for (int t = 0; t < tilenumber; t++) {
 			int igl, jgl;
 			MPI_Recv(&igl, 1, MPI_INT, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 			MPI_Recv(&jgl, 1, MPI_INT, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+			for (int i = igl * r1; i < min((igl + 1) * r1, n); ++i) {
+				MPI_Recv(A[i], n, MPI_FLOAT, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+			}
 			Q1 = ceil(float(n) / r1);
 			r2 = ceil(float(n) / Q2);
 			Tile(igl, jgl);
