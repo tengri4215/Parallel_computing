@@ -16,6 +16,7 @@ float** C;
 int r1, Q2, n, Q1, r2;
 int numprocs;
 int tilesForProcess = 0;
+int reading = 0;
 
 
 void Tile(int igl, int jgl) {
@@ -60,6 +61,9 @@ int main(int argc, char* argv[])
 	r1 = stoi((string)argv[1]);
 	Q2 = stoi((string)argv[2]);
 	n = stoi((string)argv[3]);
+	if (argc == 5) {
+		reading = 1;
+	}
 	A = new float* [n];
 	B = new float* [n];
 	C = new float* [n];
@@ -69,15 +73,26 @@ int main(int argc, char* argv[])
 		C[i] = new float[n];
 	}
 	if (myid == 0) {
-		for (int i = 0; i < n; i++) {
-			for (int j = 0; j < n; j++) {
-				A[i][j] = 200 * ((float)rand() / RAND_MAX) - 100;
-				B[i][j] = 200 * ((float)rand() / RAND_MAX) - 100;
+		if (!reading) {
+			for (int i = 0; i < n; i++) {
+				for (int j = 0; j < n; j++) {
+					A[i][j] = 200 * ((float)rand() / RAND_MAX) - 100;
+					B[i][j] = 200 * ((float)rand() / RAND_MAX) - 100;
+				}
+			}
+		}
+		else {
+			ifstream in("input.txt");
+			for (int i = 0; i < n; i++) {
+				for (int j = 0; j < n; j++) {
+					in >> A[i][j];
+					in >> B[i][j];
+				}
 			}
 		}
 		Q1 = ceil(float(n) / r1);
 		r2 = ceil(float(n) / Q2);
-
+		//cerr << r1 << ' ' << r2 << ' ' << Q1 << ' ' << Q2 << '\n';
 		auto start = std::chrono::steady_clock::now();
 		designate();
 		
@@ -93,18 +108,20 @@ int main(int argc, char* argv[])
 				}
 			}
 		}
+		
 		target_process = 0;
 		for (int igl = 0; igl < Q1; ++igl) {
 			for (int jgl = 0; jgl < Q2; ++jgl) {
+				target_process++;
+				if (target_process >= numprocs) target_process = 1;
 				for (int i = igl * r1; i < min((igl + 1) * r1, n); ++i) {
-					target_process++;
-					if (target_process >= numprocs) target_process = 1;
 					MPI_Recv(C[i] + jgl * r2, min(r2, n - jgl * r2), MPI_FLOAT, target_process, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 				}
 			}
 		}
 		auto end = std::chrono::steady_clock::now();
 		auto time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+
 		ofstream tout("logs.txt", ios_base::app);
 		tout << numprocs - 1 << ' ' << r1 << ' ' << Q2 << ' ' << n << ' ' << time << '\n';
 		ofstream fout("output.txt");
@@ -118,7 +135,7 @@ int main(int argc, char* argv[])
 	else {
 		int tilenumber;
 		MPI_Recv(&tilenumber, 1, MPI_INT, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-
+		
 		for (int j = 0; j < n; j++) {
 			//MPI_Recv(&(A[j][0]), n, MPI_FLOAT, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 			MPI_Recv(&(B[j][0]), n, MPI_FLOAT, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
