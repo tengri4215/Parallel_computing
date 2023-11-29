@@ -39,7 +39,7 @@ float** GenMatrix(size_t n) {
 	return M;
 }
 
-void Solve(int threadNumber, int r1, int Q2, size_t n, float** A, float** B) {
+float** Solve(int threadNumber, int r1, int Q2, size_t n, float** A, float** B) {
 	ofstream out("../Release/input.txt");
 	for (int i = 0; i < n; i++) {
 		for (int j = 0; j < n; j++) {
@@ -54,31 +54,41 @@ void Solve(int threadNumber, int r1, int Q2, size_t n, float** A, float** B) {
 		out << endl;
 	}
 	system(format("mpiexec -n {} ../Release/pain.exe {} {} {} {}", threadNumber, r1, Q2, n, "r").c_str());
+	float** C = new float* [n];
+	for (int i = 0; i < n; i++) {
+		C[i] = new float[n];
+	}
+	ifstream result("../Release/output.txt");
+	for (int i = 0; i < n; i++) {
+		for (int j = 0; j < n; j++) {
+			result >> C[i][j];
+		}
+	}
+	return C;
 }
 
 
 
 int main()
 {
-	cout << format("mpiexec -n {} ./pain.exe {} {} {}", 5, 2, 2, 10).c_str() << endl;
-	system(format("mpiexec -n {} ./pain.exe {} {} {}", 5, 2, 2, 10).c_str());
+	//system(format("mpiexec -n {} ./pain.exe {} {} {}", 5, 2, 2, 10).c_str());
 	//write any other calls here
 	// 
 	//for (int i : firstTileSizes) {
 	//	for (int j : secondTileNumbers) {
 	//		if (i < 100 && j < 100) {
 	//			cerr << i << ' ' << j << '\n';
-	//			system(format("mpiexec -n {} ../Release/pain.exe {} {} {}\n", 9, i, i, 100).c_str());
+	//			system(format("mpiexec -n {} ../Release/pain.exe {} {} {}\n", 9, i, j, 100).c_str());
 	//		}
 	//		
-	//		system(format("mpiexec -n {} ../Release/pain.exe {} {} {}", 9, i, i, 1000).c_str());
+	//		system(format("mpiexec -n {} ../Release/pain.exe {} {} {}", 9, i, j, 1000).c_str());
 	//	}
 	//}
-	//for (int i : threadNumbers) {
-	//	system(format("mpiexec -n {} ../Release/pain.exe {} {} {}", threadNumbers, 10, 10, 1000).c_str());
-	//}
-	//for (int i : matrixSizes) {
-	//	system(format("mpiexec -n {} ../Release/pain.exe {} {} {}", 9, 10, 10, i).c_str());
-	//}
+	for (int i : threadNumbers) {
+		system(format("mpiexec -n {} ../Release/pain.exe {} {} {}", i, 10, 10, 1000).c_str());
+	}
+	for (int i : matrixSizes) {
+		system(format("mpiexec -n {} ../Release/pain.exe {} {} {}", 9, 10, 10, i).c_str());
+	}
 	return 0;
 }
